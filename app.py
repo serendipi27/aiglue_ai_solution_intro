@@ -13,30 +13,49 @@ st.set_page_config(
 # -----------------------------
 st.markdown("""
 <style>
+/* 전체 앱 여백 */
 .block-container {
-    padding-top: 1rem;
+    padding-top: 2.2rem;
     padding-bottom: 1rem;
     padding-left: 1rem;
     padding-right: 1rem;
     max-width: 100%;
 }
 
+/* 상단 헤더가 너무 붙지 않도록 추가 보정 */
+header[data-testid="stHeader"] {
+    height: auto;
+}
+
 html, body, [data-testid="stAppViewContainer"] {
     background-color: #ffffff;
+}
+
+/* 홈 상단 제목 영역 */
+.top-hero {
+    padding-top: 0.5rem;
+    padding-bottom: 0.8rem;
 }
 
 .main-title {
     font-size: 2rem;
     font-weight: 800;
-    margin-bottom: 0.25rem;
+    margin-top: 0;
+    margin-bottom: 0.35rem;
+    line-height: 1.35;
+    word-break: keep-all;
 }
 
 .sub-title {
     font-size: 1rem;
     color: #666666;
-    margin-bottom: 1.2rem;
+    margin-top: 0;
+    margin-bottom: 0;
+    line-height: 1.6;
+    word-break: keep-all;
 }
 
+/* 카드 */
 .card-wrap {
     border: 1px solid #eaeaea;
     border-radius: 20px;
@@ -50,16 +69,26 @@ html, body, [data-testid="stAppViewContainer"] {
     font-size: 1.05rem;
     font-weight: 700;
     margin-top: 0.7rem;
-    margin-bottom: 0.4rem;
-    line-height: 1.4;
+    margin-bottom: 0.5rem;
+    line-height: 1.45;
     min-height: 3em;
+    word-break: keep-all;
+}
+
+/* 상세 제목 */
+.viewer-title-wrap {
+    padding-top: 0.2rem;
+    padding-bottom: 0.4rem;
 }
 
 .viewer-title {
     font-size: 1.4rem;
     font-weight: 800;
-    margin-bottom: 0.6rem;
+    margin-top: 0;
+    margin-bottom: 0;
     text-align: center;
+    line-height: 1.4;
+    word-break: keep-all;
 }
 
 .page-indicator {
@@ -67,10 +96,11 @@ html, body, [data-testid="stAppViewContainer"] {
     font-size: 1rem;
     font-weight: 600;
     color: #444;
-    margin-top: 0.5rem;
-    margin-bottom: 0.5rem;
+    margin-top: 0.6rem;
+    margin-bottom: 0.6rem;
 }
 
+/* 슬라이드 표시 프레임 */
 .slide-frame {
     width: 100%;
     height: 78vh;
@@ -102,24 +132,45 @@ div[data-testid="stHorizontalBlock"] > div {
     font-weight: 700;
 }
 
+/* 모바일 대응 */
 @media (max-width: 768px) {
     .block-container {
-        padding-top: 0.6rem;
-        padding-left: 0.5rem;
-        padding-right: 0.5rem;
+        padding-top: 2.6rem;
+        padding-left: 0.6rem;
+        padding-right: 0.6rem;
+        padding-bottom: 0.8rem;
+    }
+
+    .top-hero {
+        padding-top: 0.2rem;
         padding-bottom: 0.8rem;
     }
 
     .main-title {
-        font-size: 1.5rem;
+        font-size: 1.55rem;
+        line-height: 1.45;
+        margin-bottom: 0.45rem;
+    }
+
+    .sub-title {
+        font-size: 0.95rem;
+        line-height: 1.6;
+    }
+
+    .viewer-title-wrap {
+        padding-top: 0.1rem;
+        padding-bottom: 0.45rem;
     }
 
     .viewer-title {
-        font-size: 1.1rem;
+        font-size: 1.12rem;
+        line-height: 1.45;
+        padding-left: 0.2rem;
+        padding-right: 0.2rem;
     }
 
     .slide-frame {
-        height: 72vh;
+        height: 70vh;
         border-radius: 14px;
     }
 
@@ -200,8 +251,12 @@ def render_big_image(image_path: str):
 # 홈 화면
 # -----------------------------
 def show_home():
-    st.markdown('<div class="main-title">AI 업무자동화 솔루션</div>', unsafe_allow_html=True)
-    st.markdown('<div class="sub-title">프로젝트를 선택하면 슬라이드를 한 장씩 크게 볼 수 있습니다.</div>', unsafe_allow_html=True)
+    st.markdown("""
+    <div class="top-hero">
+        <div class="main-title">AI 업무자동화 솔루션</div>
+        <div class="sub-title">프로젝트를 선택하면 슬라이드를 한 장씩 크게 볼 수 있습니다.</div>
+    </div>
+    """, unsafe_allow_html=True)
 
     keys = list(projects.keys())
 
@@ -248,7 +303,6 @@ def show_detail():
             st.rerun()
         return
 
-    # 인덱스 보정
     if st.session_state.idx < 0:
         st.session_state.idx = 0
     if st.session_state.idx >= len(images):
@@ -262,7 +316,14 @@ def show_detail():
             st.rerun()
 
     with top2:
-        st.markdown(f'<div class="viewer-title">{title}</div>', unsafe_allow_html=True)
+        st.markdown(
+            f"""
+            <div class="viewer-title-wrap">
+                <div class="viewer-title">{title}</div>
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
 
     with top3:
         st.empty()
