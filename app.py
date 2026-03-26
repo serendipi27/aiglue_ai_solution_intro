@@ -1,176 +1,309 @@
+import os
+import base64
 import streamlit as st
-from pathlib import Path
 
-# --------------------------------------------------
-# 기본 경로 설정
-# --------------------------------------------------
-BASE_DIR = Path(__file__).resolve().parent
-SLIDES_DIR = BASE_DIR / "slides"
+st.set_page_config(
+    page_title="AI 업무자동화 솔루션",
+    layout="wide",
+    initial_sidebar_state="collapsed"
+)
 
-# 지원할 이미지 확장자
-IMAGE_EXTENSIONS = {".png", ".jpg", ".jpeg", ".webp"}
+# -----------------------------
+# 기본 스타일
+# -----------------------------
+st.markdown("""
+<style>
+.block-container {
+    padding-top: 1rem;
+    padding-bottom: 1rem;
+    padding-left: 1rem;
+    padding-right: 1rem;
+    max-width: 100%;
+}
 
-# --------------------------------------------------
-# 솔루션 폴더 목록 가져오기
-# --------------------------------------------------
-@st.cache_data
-def get_solution_folders():
-    """
-    slides 폴더 아래의 솔루션 폴더 목록을 반환
-    """
-    if not SLIDES_DIR.exists():
+html, body, [data-testid="stAppViewContainer"] {
+    background-color: #ffffff;
+}
+
+.main-title {
+    font-size: 2rem;
+    font-weight: 800;
+    margin-bottom: 0.25rem;
+}
+
+.sub-title {
+    font-size: 1rem;
+    color: #666666;
+    margin-bottom: 1.2rem;
+}
+
+.card-wrap {
+    border: 1px solid #eaeaea;
+    border-radius: 20px;
+    padding: 14px;
+    background: #ffffff;
+    box-shadow: 0 4px 14px rgba(0,0,0,0.06);
+    margin-bottom: 1rem;
+}
+
+.card-title {
+    font-size: 1.05rem;
+    font-weight: 700;
+    margin-top: 0.7rem;
+    margin-bottom: 0.4rem;
+    line-height: 1.4;
+    min-height: 3em;
+}
+
+.viewer-title {
+    font-size: 1.4rem;
+    font-weight: 800;
+    margin-bottom: 0.6rem;
+    text-align: center;
+}
+
+.page-indicator {
+    text-align: center;
+    font-size: 1rem;
+    font-weight: 600;
+    color: #444;
+    margin-top: 0.5rem;
+    margin-bottom: 0.5rem;
+}
+
+.slide-frame {
+    width: 100%;
+    height: 78vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #f7f7f7;
+    border-radius: 18px;
+    overflow: hidden;
+    border: 1px solid #ececec;
+}
+
+.slide-frame img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    display: block;
+    background: white;
+}
+
+div[data-testid="stHorizontalBlock"] > div {
+    width: 100%;
+}
+
+.stButton > button {
+    width: 100%;
+    border-radius: 12px;
+    height: 3rem;
+    font-weight: 700;
+}
+
+@media (max-width: 768px) {
+    .block-container {
+        padding-top: 0.6rem;
+        padding-left: 0.5rem;
+        padding-right: 0.5rem;
+        padding-bottom: 0.8rem;
+    }
+
+    .main-title {
+        font-size: 1.5rem;
+    }
+
+    .viewer-title {
+        font-size: 1.1rem;
+    }
+
+    .slide-frame {
+        height: 72vh;
+        border-radius: 14px;
+    }
+
+    .card-title {
+        font-size: 0.98rem;
+    }
+
+    .stButton > button {
+        height: 2.8rem;
+        font-size: 0.95rem;
+    }
+}
+</style>
+""", unsafe_allow_html=True)
+
+# -----------------------------
+# 프로젝트 정의
+# -----------------------------
+projects = {
+    "sol1": "근무시간 및 수당 자동 계산 시스템",
+    "sol2": "OCR 기반 이미지 데이터 변환",
+    "sol3": "중복 자산 탐색 자동화",
+    "sol4": "뉴스 크롤링 및 콘텐츠 자동 생성",
+    "sol5": "VoC 감정 분석 웹앱",
+    "sol6": "데이터 전처리 자동화",
+}
+
+# -----------------------------
+# 상태 관리
+# -----------------------------
+if "page" not in st.session_state:
+    st.session_state.page = "home"
+
+if "project" not in st.session_state:
+    st.session_state.project = None
+
+if "idx" not in st.session_state:
+    st.session_state.idx = 0
+
+# -----------------------------
+# 유틸 함수
+# -----------------------------
+def load_images(folder: str):
+    if not os.path.exists(folder):
         return []
 
-    folders = [p for p in SLIDES_DIR.iterdir() if p.is_dir()]
-    folders = sorted(folders, key=lambda x: x.name.lower())
-    return [folder.name for folder in folders]
-
-
-# --------------------------------------------------
-# 특정 솔루션 폴더 안의 이미지 경로 수집
-# --------------------------------------------------
-@st.cache_data
-def get_solution_image_paths(solution_name: str):
-    """
-    slides/solution_name 아래에서 이미지 파일을 재귀적으로 탐색하여
-    정렬된 경로 리스트를 반환
-    """
-    solution_dir = SLIDES_DIR / solution_name
-
-    if not solution_dir.exists() or not solution_dir.is_dir():
-        return []
-
-    image_files = [
-        p for p in solution_dir.rglob("*")
-        if p.is_file() and p.suffix.lower() in IMAGE_EXTENSIONS
+    valid_ext = (".png", ".jpg", ".jpeg", ".webp")
+    files = [
+        os.path.join(folder, f)
+        for f in os.listdir(folder)
+        if f.lower().endswith(valid_ext)
     ]
+    return sorted(files)
 
-    # 파일명 기준 + 전체 경로 기준 정렬
-    image_files = sorted(image_files, key=lambda x: str(x).lower())
+def image_to_base64(image_path: str) -> str:
+    with open(image_path, "rb") as f:
+        return base64.b64encode(f.read()).decode("utf-8")
 
-    # cache_data에서 직렬화 안정성을 위해 문자열로 반환
-    return [str(p) for p in image_files]
+def render_big_image(image_path: str):
+    ext = os.path.splitext(image_path)[1].lower()
+    mime = "image/png"
+    if ext in [".jpg", ".jpeg"]:
+        mime = "image/jpeg"
+    elif ext == ".webp":
+        mime = "image/webp"
 
+    img_b64 = image_to_base64(image_path)
+    st.markdown(
+        f"""
+        <div class="slide-frame">
+            <img src="data:{mime};base64,{img_b64}" alt="slide">
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
 
-# --------------------------------------------------
-# 이미지 바이트 자체를 캐시에 저장
-# --------------------------------------------------
-@st.cache_data
-def load_image_bytes(image_path: str):
-    """
-    이미지 파일을 bytes로 읽어서 cache
-    """
-    path = Path(image_path)
-    if not path.exists():
-        return None
-    return path.read_bytes()
+# -----------------------------
+# 홈 화면
+# -----------------------------
+def show_home():
+    st.markdown('<div class="main-title">AI 업무자동화 솔루션</div>', unsafe_allow_html=True)
+    st.markdown('<div class="sub-title">프로젝트를 선택하면 슬라이드를 한 장씩 크게 볼 수 있습니다.</div>', unsafe_allow_html=True)
 
+    keys = list(projects.keys())
 
-# --------------------------------------------------
-# 선택된 솔루션의 모든 이미지를 미리 읽어서 캐시에 적재
-# --------------------------------------------------
-@st.cache_data
-def preload_solution_images(solution_name: str):
-    """
-    특정 솔루션의 이미지들을 모두 읽어서 캐시에 적재
-    반환값: [{"name": 파일명, "path": 경로, "bytes": 이미지바이트}, ...]
-    """
-    image_paths = get_solution_image_paths(solution_name)
+    for row_start in range(0, len(keys), 2):
+        cols = st.columns(2, gap="medium")
+        row_keys = keys[row_start:row_start + 2]
 
-    results = []
-    for image_path in image_paths:
-        img_bytes = load_image_bytes(image_path)
-        if img_bytes is not None:
-            results.append({
-                "name": Path(image_path).name,
-                "path": image_path,
-                "bytes": img_bytes
-            })
+        for col, key in zip(cols, row_keys):
+            title = projects[key]
+            folder = os.path.join("slides", key)
+            images = load_images(folder)
+            thumbnail = images[0] if images else None
 
-    return results
+            with col:
+                st.markdown('<div class="card-wrap">', unsafe_allow_html=True)
 
+                if thumbnail:
+                    st.image(thumbnail, use_container_width=True)
 
-# --------------------------------------------------
-# 상세 보기 화면
-# --------------------------------------------------
-def show_detail(selected_solution: str):
-    """
-    선택된 솔루션의 이미지 상세 보기
-    """
+                st.markdown(f'<div class="card-title">{title}</div>', unsafe_allow_html=True)
 
-    # 솔루션이 바뀌면 idx 초기화
-    if "current_solution" not in st.session_state:
-        st.session_state.current_solution = selected_solution
+                if st.button("프로젝트 보기", key=f"open_{key}"):
+                    st.session_state.page = "detail"
+                    st.session_state.project = key
+                    st.session_state.idx = 0
+                    st.rerun()
 
-    if "idx" not in st.session_state:
-        st.session_state.idx = 0
+                st.markdown('</div>', unsafe_allow_html=True)
 
-    if st.session_state.current_solution != selected_solution:
-        st.session_state.current_solution = selected_solution
-        st.session_state.idx = 0
+# -----------------------------
+# 상세 화면
+# -----------------------------
+def show_detail():
+    key = st.session_state.project
+    title = projects[key]
 
-    # 캐시된 이미지 불러오기
-    images = preload_solution_images(selected_solution)
-
-    st.subheader(f"솔루션 상세: {selected_solution}")
+    folder = os.path.join("slides", key)
+    images = load_images(folder)
 
     if not images:
-        st.warning(f"'{selected_solution}' 폴더에서 이미지 파일을 찾지 못했습니다.")
+        st.error("해당 프로젝트 폴더에 이미지가 없습니다.")
+        if st.button("홈으로 돌아가기"):
+            st.session_state.page = "home"
+            st.rerun()
         return
 
     # 인덱스 보정
-    st.session_state.idx = max(0, min(st.session_state.idx, len(images) - 1))
+    if st.session_state.idx < 0:
+        st.session_state.idx = 0
+    if st.session_state.idx >= len(images):
+        st.session_state.idx = len(images) - 1
 
-    current_image = images[st.session_state.idx]
+    top1, top2, top3 = st.columns([1, 4, 1])
 
-    # 상단 정보
-    st.write(f"총 이미지 수: {len(images)}")
-    st.write(f"현재 이미지: {st.session_state.idx + 1} / {len(images)}")
-    st.caption(current_image["path"])
-
-    # 이미지 표시
-    st.image(current_image["bytes"], caption=current_image["name"], use_container_width=True)
-
-    # 이전 / 다음 버튼
-    col1, col2, col3 = st.columns([1, 1, 3])
-
-    with col1:
-        if st.button("이전", use_container_width=True):
-            st.session_state.idx = max(0, st.session_state.idx - 1)
+    with top1:
+        if st.button("← 홈", key="go_home"):
+            st.session_state.page = "home"
             st.rerun()
 
-    with col2:
-        if st.button("다음", use_container_width=True):
-            st.session_state.idx = min(len(images) - 1, st.session_state.idx + 1)
+    with top2:
+        st.markdown(f'<div class="viewer-title">{title}</div>', unsafe_allow_html=True)
+
+    with top3:
+        st.empty()
+
+    render_big_image(images[st.session_state.idx])
+
+    st.markdown(
+        f'<div class="page-indicator">{st.session_state.idx + 1} / {len(images)}</div>',
+        unsafe_allow_html=True
+    )
+
+    nav1, nav2, nav3 = st.columns([1.2, 1, 1.2], gap="small")
+
+    with nav1:
+        prev_disabled = st.session_state.idx == 0
+        if st.button("◀ 이전", disabled=prev_disabled, key="prev_btn"):
+            st.session_state.idx -= 1
             st.rerun()
 
-    # 썸네일 느낌의 파일명 목록
-    with st.expander("이미지 목록 보기"):
-        for i, img in enumerate(images):
-            marker = "👉 " if i == st.session_state.idx else ""
-            st.write(f"{marker}{i+1}. {img['name']}")
+    with nav2:
+        current = st.selectbox(
+            "슬라이드 이동",
+            options=list(range(len(images))),
+            index=st.session_state.idx,
+            format_func=lambda x: f"{x + 1}번 슬라이드",
+            label_visibility="collapsed"
+        )
+        if current != st.session_state.idx:
+            st.session_state.idx = current
+            st.rerun()
 
+    with nav3:
+        next_disabled = st.session_state.idx == len(images) - 1
+        if st.button("다음 ▶", disabled=next_disabled, key="next_btn"):
+            st.session_state.idx += 1
+            st.rerun()
 
-# --------------------------------------------------
-# 메인 화면
-# --------------------------------------------------
-def main():
-    st.title("솔루션 이미지 뷰어")
-
-    solution_folders = get_solution_folders()
-
-    if not solution_folders:
-        st.error("slides 폴더가 없거나, 솔루션 폴더가 없습니다.")
-        st.info(f"확인 경로: {SLIDES_DIR}")
-        return
-
-    selected_solution = st.selectbox("솔루션 선택", solution_folders)
-
-    # 선택한 솔루션 외에, 첫 진입 시 일부 미리 캐시하고 싶으면 여기서 가능
-    # preload_solution_images(selected_solution)
-
-    show_detail(selected_solution)
-
-
-if __name__ == "__main__":
-    main()
+# -----------------------------
+# 라우팅
+# -----------------------------
+if st.session_state.page == "home":
+    show_home()
+else:
+    show_detail()
